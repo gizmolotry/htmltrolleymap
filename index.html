@@ -38,9 +38,15 @@
     animation:pulseRing 2s ease-in-out infinite; pointer-events:none;
   }
 
-  /* Hover card (shown only on hover; scales with zoom) */
-  .hovercard{position:fixed;z-index:100000;pointer-events:none;background:rgba(255,255,255,.98);border:1px solid #1f5aa6;border-radius:8px;box-shadow:0 4px 18px rgba(0,0,0,.2);transform-origin:top left;padding:8px 10px;font:12px Arial,sans-serif;color:#111;display:none}
-  .hovercard .h-name{ font-weight:bold; margin-bottom:2px; font-size:12px; }
+  /* Hover card — fixed to viewport so it never sits under the SVG */
+  .hovercard{
+    position:fixed; z-index:1000000; pointer-events:none;
+    background:rgba(255,255,255,.98); border:1px solid #1f5aa6; border-radius:8px;
+    box-shadow:0 8px 24px rgba(0,0,0,.25);
+    transform-origin:top left;
+    padding:10px 12px; font:13px/1.3 Arial,sans-serif; color:#111; display:none;
+  }
+  .hovercard .h-name{ font-weight:bold; margin-bottom:2px; }
   .hovercard .row{ display:flex; gap:8px; align-items:baseline; }
   .hovercard .lab{ color:#666; width:52px; }
   .hovercard .val-t{ color:#b22222; font-weight:bold; }
@@ -96,7 +102,7 @@
     attribution: '&copy; OSM contributors'
   }).addTo(map);
 
-  // ROI mask: dim everything outside ROI (outer ring with ROI hole)
+  // ROI mask
   const outer = [[90,-180],[90,180],[-90,180],[-90,-180]];
   const roi   = [[55.55,-10.80],[55.55,-5.30],[51.20,-5.30],[51.20,-10.80]];
   L.polygon([outer, roi], {stroke:false, fill:true, fillColor:'#e9f2f7', fillOpacity:0.75, interactive:false}).addTo(map);
@@ -129,26 +135,21 @@
       +   '<div class="lab">Total</div><div class="val-all">' + h.total.toLocaleString() + '</div>'
       + '</div>';
   }
-  function showCard(h, clientX, clientY){
-    const z = map.getZoom();                 // ~0.60 @ z=6 → ~1.20 @ z=10
+  function showCard(h, ev){
+    const z = map.getZoom();
     const s = Math.max(0.60, Math.min(1.20, 0.10 + 0.10 * z));
+    const pt = (ev && ev.touches && ev.touches[0]) ? ev.touches[0] : ev;
+    const x = (pt && pt.clientX) ? pt.clientX : 0;
+    const y = (pt && pt.clientY) ? pt.clientY : 0;
     card.style.transform = 'scale(' + s + ')';
     card.innerHTML = cardHTML(h);
     card.style.display = 'block';
-    card.style.left = (clientX + 12) + 'px';
-    card.style.top  = (clientY + 12) + 'px';
+    card.style.left = (x + 12) + 'px';
+    card.style.top  = (y + 12) + 'px';
   }
   function hideCard(){ card.style.display = 'none'; }
   map.on('dragstart', hideCard);
   map.on('zoomstart', hideCard);
-
-  // Hide card when mouse is over base map (not a ring/dot)
-  svg.on('mousemove', function(ev){
-    const el = ev.target;
-    const isDot  = el.tagName === 'circle' && el.classList && el.classList.contains('dot');
-    const isRing = el.tagName === 'circle' && d3.select(el).node().parentNode === gRings.node();
-    if (!isDot && !isRing) hideCard();
-  });
 
   // ---- Helpers ----
   function project(lat, lon){ return map.latLngToLayerPoint(L.latLng(lat, lon)); }
@@ -179,7 +180,7 @@
       col++; placed += rowsThis;
     }
 
-    // right ward grid (no visible box)
+    // right ward grid
     const boxW=180, boxH=120, padX=20, topPad=12;
     const boxCx=p.x + 18 + padX + boxW/2, boxCy=p.y;
     const tlx=boxCx - boxW/2 + 10, tly=boxCy - boxH/2 + topPad;
@@ -195,7 +196,7 @@
   const model = H.map(h => Object.assign({}, h));
   model.forEach(h => { h.targets = buildTargets(h.lat, h.lon, h.trolley, h.ward); });
 
-  // Draw hospital rings (no boxes)
+  // Draw hospital rings
   function drawRings(){
     gRings.selectAll('*').remove();
     model.forEach(h => {
@@ -204,7 +205,7 @@
         .attr('cx', t.center.x).attr('cy', t.center.y).attr('r', 18)
         .attr('fill', '#f5f5f5').attr('stroke', '#0a6536').attr('stroke-width', 2)
         .style('cursor','pointer')
-        .on('mousemove', function(ev){ showCard(h, ev.clientX, ev.clientY); })
+        .on('mousemove', function(ev){ showCard(h, ev); })
         .on('mouseout', hideCard);
       h.ring = ring;
 
@@ -239,11 +240,11 @@
     .style('opacity', 0)
     .on('mousemove', function(ev,d){
       const h = model.find(x => x.name === d.hid);
-      if (h) showCard(h, ev.clientX, ev.clientY);
+      if (h) showCard(h, ev);
     })
     .on('mouseout', hideCard);
 
-  dotSel.transition().delay((d,i)=>i*STAGGER).duration(TRAVEL_MS).ease(EASE)
+  dotSel.transition().delay((d,i)=>i*STAGGER).duration(TRAVEL_MS).ease(d3.easeCubicOut)
     .style('opacity',1).attr('cx', d=>d.tx).attr('cy', d=>d.ty)
     .on('end', function(d){
       const c = d3.select(this), base = d.ty;
@@ -275,7 +276,7 @@
       return;
     }
 
-    // snap dots to new positions (no re-fly-in)
+    // snap dots to new positions
     let idxT = {}, idxW = {};
     model.forEach(h => { idxT[h.name]=0; idxW[h.name]=0; });
 
