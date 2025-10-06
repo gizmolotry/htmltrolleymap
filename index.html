@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -49,36 +48,66 @@
 <script>
   const DATA = {"hospitals": [{"name": "St Vincent's University Hospital", "lon": -6.224, "lat": 53.318, "trolley": 547, "ward": 49, "total": 596}, {"name": "Mater Misericordiae University Hospital", "lon": -6.262, "lat": 53.36, "trolley": 366, "ward": 0, "total": 366}, {"name": "Beaumont Hospital", "lon": -6.22, "lat": 53.391, "trolley": 207, "ward": 0, "total": 207}, {"name": "Connolly Hospital, Blanchardstown", "lon": -6.386, "lat": 53.389, "trolley": 63, "ward": 0, "total": 63}, {"name": "St James’s Hospital", "lon": -6.292, "lat": 53.338, "trolley": 267, "ward": 0, "total": 267}, {"name": "Naas General Hospital", "lon": -6.666, "lat": 53.215, "trolley": 241, "ward": 12, "total": 253}, {"name": "Our Lady of Lourdes Hospital, Drogheda", "lon": -6.349, "lat": 53.717, "trolley": 278, "ward": 0, "total": 278}, {"name": "Cavan General Hospital", "lon": -7.36, "lat": 53.991, "trolley": 214, "ward": 0, "total": 214}, {"name": "Sligo University Hospital", "lon": -8.473, "lat": 54.277, "trolley": 529, "ward": 306, "total": 835}, {"name": "Letterkenny University Hospital", "lon": -7.73, "lat": 54.951, "trolley": 228, "ward": 424, "total": 652}, {"name": "Wexford General Hospital", "lon": -6.457, "lat": 52.334, "trolley": 110, "ward": 145, "total": 255}, {"name": "University Hospital Limerick", "lon": -8.652, "lat": 52.673, "trolley": 911, "ward": 1475, "total": 2386}, {"name": "Mid-Western Regional Hospital, Ennis", "lon": -8.984, "lat": 52.851, "trolley": 0, "ward": 39, "total": 39}, {"name": "University Hospital Galway", "lon": -9.062, "lat": 53.276, "trolley": 746, "ward": 261, "total": 1007}, {"name": "Mayo University Hospital", "lon": -9.297, "lat": 53.853, "trolley": 109, "ward": 227, "total": 336}, {"name": "Midland Regional Hospital, Mullingar", "lon": -7.345, "lat": 53.526, "trolley": 73, "ward": 11, "total": 84}, {"name": "Cork University Hospital", "lon": -8.553, "lat": 51.877, "trolley": 592, "ward": 127, "total": 719}, {"name": "Mercy University Hospital, Cork", "lon": -8.48, "lat": 51.897, "trolley": 128, "ward": 52, "total": 180}, {"name": "University Hospital Kerry", "lon": -9.705, "lat": 52.274, "trolley": 253, "ward": 108, "total": 361}, {"name": "University Hospital Waterford", "lon": -7.106, "lat": 52.258, "trolley": 23, "ward": 0, "total": 23}, {"name": "St Luke’s General Hospital, Kilkenny", "lon": -7.25, "lat": 52.652, "trolley": 125, "ward": 150, "total": 275}, {"name": "Our Lady's Children's Hospital, Crumlin", "lon": -6.314, "lat": 53.321, "trolley": 33, "ward": 0, "total": 33}, {"name": "Temple Street Children’s University Hospital", "lon": -6.262, "lat": 53.357, "trolley": 35, "ward": 0, "total": 35}, {"name": "National Children's Hospital, Tallaght", "lon": -6.369, "lat": 53.291, "trolley": 10, "ward": 0, "total": 10}, {"name": "Portiuncula Hospital", "lon": -8.221, "lat": 53.331, "trolley": 36, "ward": 0, "total": 36}, {"name": "Midland Regional Hospital, Portlaoise", "lon": -7.297, "lat": 53.031, "trolley": 79, "ward": 0, "total": 79}, {"name": "Bantry General Hospital", "lon": -9.448, "lat": 51.679, "trolley": 0, "ward": 29, "total": 29}, {"name": "Tipperary University Hospital", "lon": -7.7, "lat": 52.355, "trolley": 68, "ward": 78, "total": 146}, {"name": "Our Lady's Hospital, Navan", "lon": -6.681, "lat": 53.651, "trolley": 1, "ward": 0, "total": 1}, {"name": "Tallaght University Hospital", "lon": -6.372, "lat": 53.294, "trolley": 2, "ward": 0, "total": 2}], "nat": {"trolley": 6274, "ward": 3493, "total": 9767}};
   const H = DATA.hospitals || [];
+
+  // Full-island bounds (kept for max bounds reference)
   const ROI_BOUNDS = L.latLngBounds([[51.20,-10.80],[55.55,-5.30]]);
-  const map = L.map('map', {maxBounds: ROI_BOUNDS, maxBoundsViscosity: 1.0, minZoom: 6.2, worldCopyJump: false, zoomControl: true});
-  const MW_BOUNDS = L.latLngBounds([[52.0,-10.0],[53.8,-7.6]]);
-  map.fitBounds(MW_BOUNDS);
-  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:18,noWrap:true,attribution:'&copy; OSM contributors'}).addTo(map);
+
+  // Map
+  const map = L.map('map', {
+    maxBounds: ROI_BOUNDS,      // safety net
+    maxBoundsViscosity: 1.0,
+    minZoom: 6.2,
+    worldCopyJump: false,
+    zoomControl: true
+  });
+
+  // >>> Mid-West-first view (combined approach)
+  const START_CENTER = [52.73, -8.85];                   // Limerick/Ennis/Clare center
+  const START_ZOOM   = 8.9;                              // tighter initial zoom
+  const MW_BOUNDS    = L.latLngBounds([[52.3,-9.9],[53.6,-8.1]]); // tight box
+
+  map.setView(START_CENTER, START_ZOOM);                 // 1) crisp start
+  map.fitBounds(MW_BOUNDS, { maxZoom: START_ZOOM, padding: [10,10] }); // 2) keep framing
+  map.setMinZoom(7.8);                                   // don't zoom out too far
+  map.setMaxBounds(MW_BOUNDS.pad(0.25));                 // keep users roughly in-region
+  // <<<
+
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    noWrap: true,
+    attribution: '&copy; OSM contributors'
+  }).addTo(map);
+
+  // Outside-ROI mask
   const outer = [[90,-180],[90,180],[-90,180],[-90,-180]];
   const roi   = [[55.55,-10.80],[55.55,-5.30],[51.20,-5.30],[51.20,-10.80]];
   L.polygon([outer, roi], {stroke:false, fill:true, fillColor:'#e9f2f7', fillOpacity:0.75, interactive:false}).addTo(map);
 
+  // D3 overlay
   const svgLayer = L.svg().addTo(map);
   const svg = d3.select('#map').select('svg');
   const gRings = svg.append('g').attr('class','rings');
   const gDots  = svg.append('g').attr('class','dots');
 
+  // Styles / motion
   const RED='#b22222', BLUE='#1f5aa6', DOT_R=3, HIT_R_DOT=12, HIT_R_RING=24, EDGE_PAD=40, WOBBLE=0.35;
   const TRAVEL_MS=900, STAGGER=1;
   const DOTS_PER_TROLLEY=12, DOTS_PER_WARD=18;
 
+  // Hover card
   const card = document.getElementById('card');
   function cardHTML(h){ return '<div class="h-name">'+h.name+'</div>'
       +'<div class="row"><div class="lab">Trolley</div><div class="val-t">'+(h.trolley||0).toLocaleString()+'</div></div>'
       +'<div class="row"><div class="lab">Ward</div><div class="val-w">'+(h.ward||0).toLocaleString()+'</div></div>'
       +'<div class="row" style="border-top:1px solid #cdd; padding-top:3px;"><div class="lab">Total</div><div class="val-all">'+((h.total||(h.trolley||0)+(h.ward||0))).toLocaleString()+'</div></div>'; }
-  function showCardAtHospital(h){ 
+  function showCardAtHospital(h){
     const ll=L.latLng(h.lat,h.lon);
     const pt=map.latLngToContainerPoint(ll);
     const rect=map.getContainer().getBoundingClientRect();
     const x=rect.left+pt.x, y=rect.top+pt.y;
     const z=map.getZoom();
-    const s=Math.max(0.60, Math.min(1.20, 0.10 + 0.10*z));
+    // slightly larger at higher zoom
+    const s=Math.max(0.70, Math.min(1.35, 0.08 + 0.12*z));
     card.style.transform='scale('+s+')';
     card.innerHTML=cardHTML(h);
     card.style.display='block';
@@ -88,6 +117,7 @@
   function hideCard(){ card.style.display='none'; }
   map.on('dragstart', hideCard); map.on('zoomstart', hideCard);
 
+  // Geometry helpers
   function project(lat,lon){ return map.latLngToLayerPoint(L.latLng(lat,lon)); }
   function spawnFromEdge(){
     const s=map.getSize(), w=s.x, h=s.y, side=['L','R','T','B'][Math.floor(Math.random()*4)];
@@ -100,6 +130,8 @@
     const p=project(lat,lon), left=[], right=[];
     const tDots=Math.max(0,Math.floor((trolley||0)/DOTS_PER_TROLLEY));
     const wDots=Math.max(0,Math.floor((ward||0)/DOTS_PER_WARD));
+
+    // left serpentine (trolley)
     const rows=16, vSpacing=6, colStep=10, swayAmp=4;
     let placed=0, col=0;
     while(placed<tDots){
@@ -112,6 +144,8 @@
       }
       col++; placed+=rowsThis;
     }
+
+    // right grid (ward)
     const tlx=p.x+(18+24), tly=p.y-40, wardRows=8, colSpacing=12, rowSpacing=8;
     for(let i=0;i<wDots;i++){ const c=Math.floor(i/wardRows), r=i%wardRows; right.push({x:tlx+c*colSpacing,y:tly+r*rowSpacing}); }
     return {center:p,left,right};
@@ -132,6 +166,7 @@
         .on('mousemove', ev=>showCardAtHospital(h))
         .on('mouseout', hideCard);
 
+      // UHL pulse
       if (!h.pulseDiv && h.name.indexOf('Limerick')!==-1){
         const div=document.createElement('div'); div.className='uhl-pulse';
         const size=56; div.style.width=size+'px'; div.style.height=size+'px';
@@ -141,6 +176,7 @@
     });
   }
 
+  // Dots + animation
   const nodes=[];
   model.forEach(h=>{
     const t=h.targets;
