@@ -64,7 +64,7 @@
 
   // Hard-locked Mid-West start (option 1)
   const START_CENTER = [52.73, -8.85];
-  const START_ZOOM   = 8.9;
+  const START_ZOOM   = 8.5;
   map.setView(START_CENTER, START_ZOOM);
   // Re-apply after render to override iframe/container sizing differences
   setTimeout(() => { map.setZoom(START_ZOOM); map.invalidateSize(); }, 450);
